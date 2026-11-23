@@ -1,0 +1,193 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core Primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isVerifiedUser() && (
+        request.auth.token.email == 'varshnee1422@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Validation Blueprint: Course
+    function isValidCourse(data) {
+      return data.keys().hasAll([
+        'title', 'category', 'level', 'durationWeeks', 'totalHours',
+        'feeAmount', 'kitIncluded', 'kitValue', 'certification', 'imageUrl',
+        'summary', 'modules', 'nextBatchDate', 'seatsAvailable', 'sortOrder', 'updatedAt'
+      ]) && data.keys().hasOnly([
+        'title', 'category', 'level', 'durationWeeks', 'totalHours',
+        'feeAmount', 'kitIncluded', 'kitValue', 'certification', 'imageUrl',
+        'summary', 'modules', 'nextBatchDate', 'seatsAvailable', 'sortOrder', 'updatedAt'
+      ]) &&
+      data.title is string && data.title.size() >= 2 && data.title.size() <= 120 &&
+      data.category in ['makeup', 'hair', 'draping', 'nails', 'skincare'] &&
+      data.level in ['Foundation', 'Pro Mastery', 'Masterclass'] &&
+      data.durationWeeks is number && data.durationWeeks >= 1 && data.durationWeeks <= 52 &&
+      data.totalHours is number && data.totalHours >= 4 && data.totalHours <= 500 &&
+      data.feeAmount is number && data.feeAmount >= 1000 && data.feeAmount <= 500000 &&
+      data.kitIncluded is bool &&
+      data.kitValue is number && data.kitValue >= 0 && data.kitValue <= 200000 &&
+      data.certification is string && data.certification.size() >= 2 && data.certification.size() <= 120 &&
+      data.imageUrl is string && data.imageUrl.size() <= 300 &&
+      data.summary is string && data.summary.size() >= 10 && data.summary.size() <= 400 &&
+      data.modules is list && data.modules.size() >= 1 && data.modules.size() <= 12 &&
+      data.modules[0] is string && data.modules[0].size() <= 120 &&
+      data.nextBatchDate is string && data.nextBatchDate.size() >= 4 && data.nextBatchDate.size() <= 40 &&
+      data.seatsAvailable is number && data.seatsAvailable >= 0 && data.seatsAvailable <= 100 &&
+      data.sortOrder is number && data.sortOrder >= 0 && data.sortOrder <= 100 &&
+      data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint: ComboPackage
+    function isValidCombo(data) {
+      return data.keys().hasAll([
+        'title', 'tagline', 'includedCourseTitles', 'durationWeeks',
+        'regularFee', 'comboFee', 'installmentMonths', 'perks',
+        'isFeatured', 'nextBatchDate', 'sortOrder', 'updatedAt'
+      ]) && data.keys().hasOnly([
+        'title', 'tagline', 'includedCourseTitles', 'durationWeeks',
+        'regularFee', 'comboFee', 'installmentMonths', 'perks',
+        'isFeatured', 'nextBatchDate', 'sortOrder', 'updatedAt'
+      ]) &&
+      data.title is string && data.title.size() >= 2 && data.title.size() <= 120 &&
+      data.tagline is string && data.tagline.size() >= 4 && data.tagline.size() <= 160 &&
+      data.includedCourseTitles is list && data.includedCourseTitles.size() >= 1 && data.includedCourseTitles.size() <= 8 &&
+      data.includedCourseTitles[0] is string && data.includedCourseTitles[0].size() <= 120 &&
+      data.durationWeeks is number && data.durationWeeks >= 1 && data.durationWeeks <= 52 &&
+      data.regularFee is number && data.regularFee >= 1000 && data.regularFee <= 1000000 &&
+      data.comboFee is number && data.comboFee >= 1000 && data.comboFee <= 1000000 &&
+      data.comboFee <= data.regularFee &&
+      data.installmentMonths is number && data.installmentMonths >= 1 && data.installmentMonths <= 24 &&
+      data.perks is list && data.perks.size() >= 1 && data.perks.size() <= 10 &&
+      data.perks[0] is string && data.perks[0].size() <= 160 &&
+      data.isFeatured is bool &&
+      data.nextBatchDate is string && data.nextBatchDate.size() >= 4 && data.nextBatchDate.size() <= 40 &&
+      data.sortOrder is number && data.sortOrder >= 0 && data.sortOrder <= 100 &&
+      data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint: Enrollment
+    function isValidEnrollment(data) {
+      return data.keys().hasAll([
+        'userId', 'studentName', 'email', 'phone', 'programType',
+        'programId', 'programTitle', 'totalFee', 'paymentPlan',
+        'preferredBatch', 'experienceLevel', 'notes', 'status',
+        'createdAt', 'updatedAt'
+      ]) && data.keys().hasOnly([
+        'userId', 'studentName', 'email', 'phone', 'programType',
+        'programId', 'programTitle', 'totalFee', 'paymentPlan',
+        'preferredBatch', 'experienceLevel', 'notes', 'status',
+        'createdAt', 'updatedAt'
+      ]) &&
+      isValidId(data.userId) &&
+      data.studentName is string && data.studentName.size() >= 2 && data.studentName.size() <= 100 &&
+      data.email is string && data.email.size() >= 5 && data.email.size() <= 120 &&
+      data.phone is string && data.phone.size() >= 7 && data.phone.size() <= 25 &&
+      data.programType in ['course', 'combo', 'consultation'] &&
+      isValidId(data.programId) &&
+      data.programTitle is string && data.programTitle.size() >= 2 && data.programTitle.size() <= 140 &&
+      data.totalFee is number && data.totalFee >= 0 && data.totalFee <= 1000000 &&
+      data.paymentPlan in ['full', 'emi_3', 'emi_6', 'consultation'] &&
+      data.preferredBatch is string && data.preferredBatch.size() >= 2 && data.preferredBatch.size() <= 60 &&
+      data.experienceLevel in ['Beginner', 'Intermediate', 'Working Artist'] &&
+      data.notes is string && data.notes.size() <= 500 &&
+      data.status in ['pending', 'confirmed', 'completed', 'cancelled'] &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint: AdminRecord
+    function isValidAdminRecord(data) {
+      return data.keys().hasAll(['email', 'role', 'createdAt']) &&
+        data.keys().hasOnly(['email', 'role', 'createdAt']) &&
+        data.email is string && data.email.size() >= 5 && data.email.size() <= 120 &&
+        data.role in ['director', 'admissions'] &&
+        data.createdAt is timestamp;
+    }
+
+    // Connection check document (no PII, read-only health check)
+    match /test/connection {
+      allow get: if true;
+    }
+
+    // Courses Collection (Public Non-PII Catalog, Admin-Managed)
+    match /courses/{courseId} {
+      allow get: if isValidId(courseId);
+      allow list: if true;
+      allow create: if isAdmin() && isValidId(courseId) && isValidCourse(incoming()) && incoming().updatedAt == request.time;
+      allow update: if isAdmin() && isValidId(courseId) && isValidCourse(incoming()) && incoming().updatedAt == request.time;
+      allow delete: if isAdmin() && isValidId(courseId);
+    }
+
+    // Combos Collection (Public Non-PII Catalog, Admin-Managed)
+    match /combos/{comboId} {
+      allow get: if isValidId(comboId);
+      allow list: if true;
+      allow create: if isAdmin() && isValidId(comboId) && isValidCombo(incoming()) && incoming().updatedAt == request.time;
+      allow update: if isAdmin() && isValidId(comboId) && isValidCombo(incoming()) && incoming().updatedAt == request.time;
+      allow delete: if isAdmin() && isValidId(comboId);
+    }
+
+    // Enrollments Collection (Strict PII Isolation & Owner/Admin Access)
+    match /enrollments/{enrollmentId} {
+      allow get: if isVerifiedUser() && isValidId(enrollmentId) && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isVerifiedUser() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isVerifiedUser() && isValidId(enrollmentId) && isValidEnrollment(incoming()) &&
+        incoming().userId == request.auth.uid &&
+        incoming().status == 'pending' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() && isValidId(enrollmentId) && isValidEnrollment(incoming()) &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          isAdmin() ||
+          (
+            existing().userId == request.auth.uid &&
+            existing().status == 'pending' &&
+            incoming().status == 'cancelled' &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+          )
+        );
+      allow delete: if isAdmin() && isValidId(enrollmentId);
+    }
+
+    // Admins Collection
+    match /admins/{adminId} {
+      allow get: if isVerifiedUser() && isValidId(adminId) && (request.auth.uid == adminId || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isAdmin() && isValidId(adminId) && isValidAdminRecord(incoming()) && incoming().createdAt == request.time;
+      allow update: if isAdmin() && isValidId(adminId) && isValidAdminRecord(incoming()) && incoming().createdAt == existing().createdAt;
+      allow delete: if isAdmin() && isValidId(adminId);
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Aurelia Bridal Academy",
+  "description": "Luxury bridal makeup, hairstyling, and saree draping academy with structured courses, combo packages, transparent fee calculator, and Firestore-backed enrollment management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
